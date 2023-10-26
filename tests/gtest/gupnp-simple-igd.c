@@ -88,7 +88,7 @@ get_external_ip_address_cb (GUPnPService *service,
   else
     g_assert_not_reached ();
 
-  gupnp_service_action_return (action);
+  gupnp_service_action_return_success (action);
 
 }
 
@@ -139,7 +139,7 @@ add_port_mapping_cb (GUPnPService *service,
   if (return_conflict && external_port == INTERNAL_PORT)
     gupnp_service_action_return_error (action, 718, "ConflictInMappingEntry");
   else
-    gupnp_service_action_return (action);
+    gupnp_service_action_return_success (action);
 }
 
 static gboolean
@@ -172,7 +172,7 @@ delete_port_mapping_cb (GUPnPService *service,
     g_assert (external_port != INTERNAL_PORT);
   g_assert (proto && !strcmp (proto, "UDP"));
 
-  gupnp_service_action_return (action);
+  gupnp_service_action_return_success (action);
 
   g_free (remote_host);
   g_free (proto);
@@ -182,12 +182,28 @@ delete_port_mapping_cb (GUPnPService *service,
   g_source_attach (src, g_main_context_get_thread_default ());
 }
 
+typedef struct _MappedData {
+    GMainContext *context;
+    const char *ip_address;
+    guint port;
+} MappedData;
+
+gboolean service_notify (gpointer user_data) {
+  MappedData *d = (MappedData *) user_data;
+  gupnp_service_notify (GUPNP_SERVICE (ipservice),
+                        "ExternalIPAddress", G_TYPE_STRING, d->ip_address, NULL);
+
+  return G_SOURCE_REMOVE;
+}
+
 static void
 mapped_external_port_cb (GUPnPSimpleIgd *igd, gchar *proto,
     gchar *external_ip, gchar *replaces_external_ip, guint external_port,
     gchar *local_ip, guint local_port, gchar *description, gpointer user_data)
 {
-  guint requested_external_port = GPOINTER_TO_UINT (user_data);
+
+  MappedData *d = (MappedData *) user_data;
+  guint requested_external_port = d->port;
 
   g_assert (invalid_ip == NULL);
 
@@ -218,13 +234,13 @@ mapped_external_port_cb (GUPnPSimpleIgd *igd, gchar *proto,
   }
   else
   {
-    if (!strcmp (external_ip, IP_ADDRESS_FIRST))
-      gupnp_service_notify (GUPNP_SERVICE (ipservice),
-          "ExternalIPAddress", G_TYPE_STRING, IP_ADDRESS_SECOND, NULL);
-    else if (!strcmp (external_ip, PPP_ADDRESS_FIRST))
-      gupnp_service_notify (GUPNP_SERVICE (pppservice),
-          "ExternalIPAddress", G_TYPE_STRING, PPP_ADDRESS_SECOND, NULL);
-    else
+    if (!strcmp (external_ip, IP_ADDRESS_FIRST)) {
+      d->ip_address = IP_ADDRESS_SECOND;
+      g_main_context_invoke(d->context, service_notify, d);
+    } else if (!strcmp (external_ip, PPP_ADDRESS_FIRST)) {
+      d->ip_address = PPP_ADDRESS_SECOND;
+      g_main_context_invoke(d->context, service_notify, d);
+    } else
       g_assert_not_reached ();
   }
 }
@@ -274,25 +290,21 @@ run_gupnp_simple_igd_test (GMainContext *mainctx, GUPnPSimpleIgd *igd,
   GUPnPDeviceInfo *subdev2;
   const gchar *xml_path = ".";
   GError *error = NULL;
+  GInetAddress *loopback = NULL;
 
   g_signal_connect (igd, "context-available",
         G_CALLBACK (ignore_non_localhost), NULL);
 
   if (mainctx)
     g_main_context_push_thread_default (mainctx);
-  context = gupnp_context_new ("lo", 0, NULL);
+  loopback = g_inet_address_new_loopback (G_SOCKET_FAMILY_IPV4);
+  context = gupnp_context_new_for_address (loopback, 0, GSSDP_UDA_VERSION_1_0, NULL);
+  g_object_unref (loopback);
   g_assert (context);
 
   if (g_getenv ("XML_PATH"))
     xml_path = g_getenv ("XML_PATH");
 
-  gupnp_context_host_path (context, xml_path, "");
-
-  /*
-  gupnp_context_host_path (context, "InternetGatewayDevice.xml", "/InternetGatewayDevice.xml");
-  gupnp_context_host_path (context, "WANIPConnection.xml", "/WANIPConnection.xml");
-  gupnp_context_host_path (context, "WANPPPConnection.xml", "/WANPPPConnection.xml");
-  */
 
   dev = gupnp_root_device_new (context, "InternetGatewayDevice.xml", xml_path, &error);
   g_assert (dev);
@@ -333,9 +345,12 @@ run_gupnp_simple_igd_test (GMainContext *mainctx, GUPnPSimpleIgd *igd,
 
   gupnp_root_device_set_available (dev, TRUE);
 
+  MappedData d;
+  d.context = mainctx;
+  d.port = requested_port;
 
   g_signal_connect (igd, "mapped-external-port",
-      G_CALLBACK (mapped_external_port_cb), GUINT_TO_POINTER (requested_port));
+      G_CALLBACK (mapped_external_port_cb), &d);
   g_signal_connect (igd, "error-mapping-port",
       G_CALLBACK (error_mapping_port_cb), NULL);
 
