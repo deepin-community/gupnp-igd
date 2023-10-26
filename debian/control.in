@@ -3,23 +3,24 @@ Section: libs
 Priority: optional
 Maintainer: Debian GNOME Maintainers <pkg-gnome-maintainers@lists.alioth.debian.org>
 Uploaders: @GNOME_TEAM@
-Build-Depends: debhelper (>= 11),
+Build-Depends: debhelper-compat (= 13),
                ca-certificates <!nocheck>,
-               gnome-pkg-tools,
-               gobject-introspection (>= 0.9.12-4~),
+               dh-sequence-gir,
+               dh-sequence-gnome,
                gtk-doc-tools (>= 1.10),
                libgirepository1.0-dev (>= 0.9.12),
-               libglib2.0-dev (>= 2.38),
-               libgssdp-1.2-dev,
-               libgupnp-1.2-dev,
+               libglib2.0-dev (>= 2.70),
+               libgssdp-1.6-dev (>= 1.6),
+               libgupnp-1.6-dev (>= 1.6),
                meson,
 Build-Depends-Indep: libglib2.0-doc <!nodoc>, libgupnp-doc <!nodoc>
-Standards-Version: 4.4.1
+Rules-Requires-Root: no
+Standards-Version: 4.6.2
 Vcs-Git: https://salsa.debian.org/gnome-team/gupnp-igd.git
 Vcs-Browser: https://salsa.debian.org/gnome-team/gupnp-igd
 Homepage: https://wiki.gnome.org/Projects/GUPnP
 
-Package: libgupnp-igd-1.0-4
+Package: libgupnp-igd-1.6-0
 Architecture: any
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Multi-Arch: same
@@ -27,13 +28,13 @@ Description: library to handle UPnP IGD port mapping
  A GObject-based API for controlling UPnP Internet Gateway Devices
  port mapping.
 
-Package: libgupnp-igd-1.0-dev
+Package: libgupnp-igd-1.6-dev
 Architecture: any
 Section: libdevel
-Depends: gir1.2-gupnpigd-1.0 (= ${binary:Version}),
+Depends: gir1.2-gupnpigd-1.6 (= ${binary:Version}),
          libglib2.0-dev (>= 2.26),
-         libgupnp-1.2-dev,
-         libgupnp-igd-1.0-4 (= ${binary:Version}),
+         libgupnp-1.6-dev,
+         libgupnp-igd-1.6-0 (= ${binary:Version}),
          ${misc:Depends}
 Multi-Arch: same
 Description: library to handle UPnP IGD port mapping - development files
@@ -42,18 +43,20 @@ Description: library to handle UPnP IGD port mapping - development files
  .
  This package contains the development files.
 
-Package: libgupnp-igd-1.0-doc
+Package: libgupnp-igd-doc
 Architecture: all
 Section: doc
 Depends: ${misc:Depends}
-Multi-arch: foreign
+Breaks: libgupnp-igd-1.0-doc (<< 1.6)
+Replaces: libgupnp-igd-1.0-doc (<< 1.6)
+Multi-Arch: foreign
 Description: library to handle UPnP IGD port mapping - documentation
  A GObject-based API for controlling UPnP Internet Gateway Devices
  port mapping.
  .
  This package contains the documentation.
 
-Package: gir1.2-gupnpigd-1.0
+Package: gir1.2-gupnpigd-1.6
 Architecture: any
 Section: introspection
 Depends: ${gir:Depends}, ${misc:Depends}

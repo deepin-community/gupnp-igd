@@ -1,4 +1,5 @@
-libgupnp-igd-1.0.so.4 libgupnp-igd-1.0-4 #MINVER#
+libgupnp-igd-1.6.so.0 libgupnp-igd-1.6-0 #MINVER#
+* Build-Depends-Package: libgupnp-igd-1.6-dev
  _gupnp_simple_igd_marshal_BOOLEAN__OBJECT@Base 1.2.0
  _gupnp_simple_igd_marshal_VOID__BOXED_STRING_UINT_STRING_UINT_STRING@Base 1.2.0
  _gupnp_simple_igd_marshal_VOID__STRING_STRING_STRING_UINT_STRING_UINT_STRING@Base 1.2.0
